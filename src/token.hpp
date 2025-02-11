@@ -41,7 +41,10 @@ public:
         type(type), line(line), lexme(std::move(lexme)), literal(literal) {}
 
     friend std::ostream& operator<<(std::ostream& os, const Token& obj) {
-        os << magic_enum::enum_name(obj.type) << " on line " << obj.line << ": " << obj.lexme << "(" << *obj.literal << ")"; 
+        os << magic_enum::enum_name(obj.type) << " on line " << obj.line << ": " << obj.lexme; 
+        if (obj.literal) {
+            os << "(" << *obj.literal << ")";
+        }
         return os;
     }
 

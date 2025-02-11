@@ -1,6 +1,5 @@
 #include "scanner.hpp"
 
-#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -104,11 +103,12 @@ void Scanner::string() { // TODO: make normal strings vs multi line strings
             error(line, "Unterminated string");
             return;
         }
-
         advance();
-        std::shared_ptr<Object> value = std::make_shared<String>(source.substr(start + 1, current - start - 2));
-        addToken(TokenType::STRING, value);
     }
+
+    advance();
+    std::shared_ptr<Object> value = std::make_shared<String>(source.substr(start + 1, current - start - 2));
+    addToken(TokenType::STRING, value);
 }
 
 void Scanner::scanToken() {
