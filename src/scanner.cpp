@@ -1,22 +1,17 @@
 #include "scanner.hpp"
 
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "main.hpp"
-#include "objects/float.hpp"
-#include "objects/integer.hpp"
-#include "objects/object.hpp"
-#include "objects/string.hpp"
 #include "token.hpp"
 
 void Scanner::addToken(TokenType type) {
-    addToken(type, nullptr);
+    addToken(type, Object());
 }
 
-void Scanner::addToken(TokenType type, std::shared_ptr<Object> obj) {
+void Scanner::addToken(TokenType type, Object obj) {
     std::string text = source.substr(start, current - start);
     tokens.push_back({type, line, text, obj});
 }
@@ -46,6 +41,11 @@ char Scanner::advance() {
 char Scanner::peek() {
     if (isAtEnd()) return '\0';
     return source.at(current);
+}
+
+char Scanner::peek(int count) {
+    if (current + count >= source.length()) return '\0';
+    return source.at(current + count);
 }
 
 bool Scanner::match(char expected) {
@@ -80,18 +80,18 @@ void Scanner::identifier() {
 void Scanner::number() {
     while (isDigit(peek())) advance();
 
-    if (peek() == '.') {
+    if (peek() == '.' && isDigit(peek(1))) {
         advance();
         while (isDigit(peek())) advance();
 
         std::string val = source.substr(start, current - start);
-        std::shared_ptr<Object> value = std::make_shared<Float>(std::stod(val));
+        Object value = Object(std::stod(val));
         addToken(TokenType::NUMBER, value);
         return;
     }
 
     std::string val = source.substr(start, current - start);
-    std::shared_ptr<Object> value = std::make_shared<Integer>(std::stoi(val));
+    Object value = Object(std::stoi(val));
     addToken(TokenType::NUMBER, value);
     return;
 }
@@ -99,15 +99,15 @@ void Scanner::number() {
 void Scanner::string() { // TODO: make normal strings vs multi line strings
     while (peek() != '"' && !isAtEnd()) {
         if (peek() == '\n') line++;
-        if (isAtEnd()) {
-            error(line, "Unterminated string");
-            return;
-        }
         advance();
     }
-
+    if (isAtEnd()) {
+        error(line, "Unterminated string");
+        return;
+    }
     advance();
-    std::shared_ptr<Object> value = std::make_shared<String>(source.substr(start + 1, current - start - 2));
+
+    Object value = Object(source.substr(start + 1, current - start - 2));
     addToken(TokenType::STRING, value);
 }
 
@@ -123,7 +123,6 @@ void Scanner::scanToken() {
         case ',': addToken(TokenType::COMMA); break;
         case ';': addToken(TokenType::SEMICOLON); break;
         case ':': addToken(TokenType::COLON); break;
-        case '^': addToken(TokenType::CARET); break;
         case '@': addToken(TokenType::AT_SIGN); break;
         case '?': addToken(TokenType::QUESTION_MARK); break;
 
@@ -139,22 +138,47 @@ void Scanner::scanToken() {
         case '>':
             addToken(match('=') ? TokenType::GREATER_EQUAL : TokenType::GREATER);
             break;
+        case '%':
+            addToken(match('=') ? TokenType::PERCENT_EQUAL : TokenType::PERCENT);
+            break;
+        case '^':
+            addToken(match('=') ? TokenType::CARET_EQUAL : TokenType::CARET);
+            break;
+        case '~':
+            addToken(match('=') ? TokenType::TILDE_EQUAL : TokenType::TILDE);
+            break;
+
         case '*':
             addToken(match('*') ? TokenType::STAR_STAR :
                      match('=') ? TokenType::STAR_EQUAL :
                                   TokenType::STAR);
             break;
+
+        case '&':
+            addToken(match('&') ? TokenType::AMPERSAND_AMPERSAND :
+                     match('=') ? TokenType::AMPERSAND_EQUAL :
+                                  TokenType::AMPERSAND);
+            break;
+
+        case '|':
+            addToken(match('|') ? TokenType::BAR_BAR :
+                     match('=') ? TokenType::BAR_EQUAL :
+                                  TokenType::BAR);
+            break;
+
         case '+':
             addToken(match('+') ? TokenType::PLUS_PLUS :
                      match('=') ? TokenType::PLUS_EQUAL :
                                   TokenType::PLUS);
             break;
+            
         case '-':
             addToken(match('-') ? TokenType::MINUS_MINUS :
                      match('>') ? TokenType::ARROW :
                      match('=') ? TokenType::MINUS_EQUAL :
                                   TokenType::MINUS);
             break;
+
         case '/':
             if (match('/'))
                 while (peek() != '\n' && !isAtEnd())
@@ -163,13 +187,14 @@ void Scanner::scanToken() {
                 addToken(match('=') ? TokenType::SLASH_EQUAL : TokenType::SLASH);
             break;
 
-        case '"': string(); break;
         case '.': 
             if (isDigit(peek())) {
                 current--;
                 number();
             } else addToken(TokenType::DOT);
             break;
+
+        case '"': string(); break;
 
         case ' ':
         case '\r':
@@ -193,6 +218,6 @@ std::vector<Token> Scanner::scanTokens() {
         start = current;
         scanToken();
     }
-    tokens.push_back({TokenType::END_OF_FILE, line, "", nullptr});
+    tokens.push_back({TokenType::END_OF_FILE, line, "", Object()});
     return tokens;
 }

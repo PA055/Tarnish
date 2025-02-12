@@ -1,12 +1,18 @@
 #include "main.hpp"
 
+#include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <sysexits.h>
 #include <vector>
 
+#include "astprinter.hpp"
+#include "expr.hpp"
 #include "scanner.hpp"
 #include "token.hpp"
 
@@ -63,6 +69,19 @@ int main(const int argc, char** argv) {
         std::cout << "Usage: tarnish [script]" << std::endl;
         return EX_USAGE;
     } else if (argc == 2) {
+        if (!strcmp(argv[1], "--astTest")) {
+            std::shared_ptr<Expr<std::string>> literal1 = std::make_shared<Literal<std::string>>(Object(123));
+            std::shared_ptr<Expr<std::string>> literal2 = std::make_shared<Literal<std::string>>(Object(45.67));
+            std::shared_ptr<Expr<std::string>> unary = std::make_shared<Unary<std::string>>(Token(TokenType::MINUS, 1, "-", Object()), literal1);
+            std::shared_ptr<Expr<std::string>> grouping = std::make_shared<Grouping<std::string>>(literal2);
+            std::shared_ptr<Expr<std::string>> expr = std::make_shared<Binary<std::string>>(
+                unary,
+                Token(TokenType::STAR, 1, "*", Object()),
+                grouping
+            );
+            std::cout << std::make_shared<AstPrinter>()->print(expr) << std::endl;
+            return 0;
+        }
         return runFile(argv[1]);
     } else {
         return runPrompt();

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "objects/object.hpp"
-
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,7 +14,7 @@ public:
 private:
     void scanToken();
     void addToken(TokenType type);
-    void addToken(TokenType type, std::shared_ptr<Object> obj);
+    void addToken(TokenType type, Object obj);
 
     bool isAtEnd();
     bool isDigit(char c);
@@ -26,6 +23,7 @@ private:
 
     char advance();
     char peek();
+    char peek(int count);
     bool match(char expected);
 
     void string();
