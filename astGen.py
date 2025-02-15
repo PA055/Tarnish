@@ -2,67 +2,62 @@ import sys
 import os
 
 
-def defineVisitor(f, baseName: str, types: dict):
-    f.write("""
-template <class R>
-class Visitor {
-public:
-    virtual ~Visitor() = default;
-""")
-    for name, fields in types.items():
-        f.write(f"\tvirtual R visit{name}{baseName}(std::shared_ptr<{name}<R>> {baseName.lower()}) = 0;\n")
-    f.write("};\n")
-
-
-def declareTypes(f, baseName: str, types: dict):
-    for name in types.keys():
-        f.write(f"\ntemplate<class R>\nclass {name};\n\n")
-
-
-def defineType(f, baseName: str, className: str, fields: str):
+def defineType(f, baseName, className, fields):
+    f.write(f"@dataclass(frozen=True)\nclass {className}({baseName}):\n")
+    for field in fields:
+        f.write(f"    {field}\n")
     f.write(f"""
-template <class R>
-class {className} :
-        public {baseName}<R>,
-        public std::enable_shared_from_this<{className}<R>> {{
-public:
-    {className}({fields}) :
+    def accept(self, visitor: "Visitor") -> any:
+        return visitor.visit{className}{baseName}(self)
+
+
 """)
-    for field in fields.split(', ')[:-1]:
-        fieldType, fieldName = field.strip().split(' ')
-        f.write(f"\t\t\t{fieldName}({fieldName}),\n")
-    f.write(f"\t\t\t{fields.split(', ')[-1].split(' ')[1]}({fields.split(', ')[-1].split(' ')[1]}) {{}}\n\n")
-    f.write(f"""\tR accept(std::shared_ptr<Visitor<R>> visitor) override {{
-        return visitor->visit{className}{baseName}(this->shared_from_this());
-    }}
+
+
+def defineVisitor(path: str, baseName: str, types: dict):
+    f = open(path, 'w')
+    f.write(f"""from abc import abstractmethod
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from .expr import {", ".join(types.keys())}
+
+
+class Visitor(Protocol):
 """)
-    for field in fields.split(', '):
-        fieldType, fieldName = field.strip().split(' ')
-        f.write(f"\t{fieldType} {fieldName};\n")
-    f.write("};\n")
+    for className in types.keys():
+        f.write(f"""    @abstractmethod
+    def visit{className}{baseName}(self, expr: "{className}") -> any:
+        raise NotImplementedError
+
+""")
 
 
 def defineAst(outputDir: str, baseName: str, types: dict):
-    path = os.path.join(outputDir, baseName.lower() + '.hpp')
+    path = os.path.join(outputDir, baseName.lower() + '.py')
     f = open(path, 'w')
-    f.write("""#pragma once
+    f.write(f"""from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import typing
+from .{baseName.lower()}_visitor import Visitor
 
-#include <memory>
+if typing.TYPE_CHECKING:
+    from .token import Token
 
-#include "token.hpp"
+
+class {baseName}(ABC):
+    @abstractmethod
+    def accept(self, visitor: "Visitor") -> any:
+        raise NotImplementedError
+
+
 """)
-    declareTypes(f, baseName, types)
-    defineVisitor(f, baseName, types)
-    f.write(f"""
-template <class R>
-class {baseName} {{
-public:
-    virtual ~{baseName}() = default;
-    virtual R accept(std::shared_ptr<Visitor<R>> visitor) = 0;
-}};
-""")
-    for name, fields in types.items():
-        defineType(f, baseName, name, fields)
+
+    for className, fields in types.items():
+        defineType(f, baseName, className, fields)
+
+    path = os.path.join(outputDir, f'{baseName.lower()}_visitor.py')
+    defineVisitor(path, baseName, types)
 
 
 if __name__ == "__main__":
@@ -72,8 +67,10 @@ if __name__ == "__main__":
 
     outputDir = sys.argv[1]
     defineAst(outputDir, "Expr", {
-        "Binary": "std::shared_ptr<Expr<R>> left, Token operation, std::shared_ptr<Expr<R>> right",
-        "Grouping": "std::shared_ptr<Expr<R>> expression",
-        "Literal": "Object value",
-        "Unary": "Token operation, std::shared_ptr<Expr<R>> right",
+        "Unary": ["operator: \"Token\"", "expression: Expr"],
+        "Binary": ["left: Expr", "operator: \"Token\"", "right: Expr"],
+        "Ternary": ["one: Expr", "op1: \"Token\"", "two: Expr", "op2: \"Token\"", "three: Expr"],
+        "Postfix": ["operator: \"Token\"", "expression: Expr"],
+        "Grouping": ["expression: Expr"],
+        "Literal": ["value: any"],
     })
