@@ -1,16 +1,27 @@
 from .token import Token, TokenType
-global hadError
+global hadError, hadRuntimeError
 
 hadError = False
+hadRuntimeError = False
 
 
-def report(line: int, where: str, message: str):
+class TarnishParseError(RuntimeError):
+    pass
+
+
+class TarnishRuntimeError(RuntimeError):
+    def __init__(self, token: Token, message: str):
+        super().__init__(message)
+        self.token = token
+
+
+def report(line: int, where: str, message: str) -> None:
     global hadError
     hadError = True
     print(f"[line {line}] - Error{where}: {message}")
 
 
-def error(line: int | Token, message: str):
+def error(line: int | Token, message: str) -> None:
     if isinstance(line, Token):
         if line.tokenType == TokenType.EOF:
             report(f"{line.line} at end", "", message)
@@ -20,5 +31,7 @@ def error(line: int | Token, message: str):
         report(line, "", message)
 
 
-class ParseError(RuntimeError):
-    pass
+def runtimeError(e: TarnishRuntimeError) -> None:
+    global hadRuntimeError
+    print(f"[line {e.token.line}] - {e}")
+    hadRuntimeError = True

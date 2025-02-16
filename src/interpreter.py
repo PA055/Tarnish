@@ -1,9 +1,25 @@
+from typing import Tuple
 from .expr_visitor import Visitor
 from .expr import Expr, Ternary, Binary, Unary, Postfix, Literal, Grouping
-from .token import TokenType
+from .token import TokenType, Token
+from .error import TarnishRuntimeError, runtimeError
 
 
 class Interpreter(Visitor):
+    def assertInteger(self, operator: Token, *values: Tuple[any, ...]) -> None:
+        if not all(isinstance(v, int) for v in values):
+            raise TarnishRuntimeError(operator, "Operand must be an integer.")
+
+    def assertNumeric(self, operator: Token, *values: Tuple[any, ...]) -> None:
+        if not all(isinstance(v, (int, float)) for v in values):
+            raise TarnishRuntimeError(operator, "Operand must be a number.")
+
+    def interpret(self, expr: Expr) -> str:
+        try:
+           return self.evaluate(expr)
+        except TarnishRuntimeError as e:
+            runtimeError(e)
+
     def evaluate(self, expr: Expr) -> any:
         return expr.accept(self)
 
@@ -49,33 +65,52 @@ class Interpreter(Visitor):
             return left != right
 
         elif expr.operator.tokenType == TokenType.CARET:
-            return int(left) ^ int(right)
+            self.assertInteger(left, right)
+            return left ^ right
         elif expr.operator.tokenType == TokenType.BAR:
-            return int(left) | int(right)
+            self.assertInteger(left, right)
+            return left | right
         elif expr.operator.tokenType == TokenType.AMPERSAND:
-            return int(left) & int(right)
+            self.assertInteger(left, right)
+            return left & right
 
         elif expr.operator.tokenType == TokenType.PERCENT:
-            return float(left) % float(right)
+            self.assertNumeric(left, right)
+            return left % right
         elif expr.operator.tokenType == TokenType.SLASH:
-            return float(left) / float(right)
+            self.assertNumeric(left, right)
+            if right == 0:
+                raise TarnishRuntimeError(expr.operator, "Cannot divide by zero.")
+            return left / right
         elif expr.operator.tokenType == TokenType.STAR:
-            return float(left) * float(right)
+            self.assertNumeric(left, right)
+            return left * right
         elif expr.operator.tokenType == TokenType.STAR_STAR:
-            return float(left) ** float(right)
-        elif expr.operator.tokenType == TokenType.PLUS:
-            return float(left) + float(right)
+            self.assertNumeric(left, right)
+            return left ** right
         elif expr.operator.tokenType == TokenType.MINUS:
-            return float(left) - float(right)
+            self.assertNumeric(left, right)
+            return left - right
+        elif expr.operator.tokenType == TokenType.PLUS:
+            if isinstance(left, (float, int)) and isinstance(right, (float, int)):
+                return left + right
+            elif isinstance(left, str) or isinstance(right, str):
+                return str(left) + str(right)
+            else:
+                raise TarnishRuntimeError(expr.operator, "Operands must be two numbers or include a string")
 
         elif expr.operator.tokenType == TokenType.LESS:
-            return float(left) < float(right)
+            self.assertNumeric(left, right)
+            return left < right
         elif expr.operator.tokenType == TokenType.LESS_EQUAL:
-            return float(left) <= float(right)
+            self.assertNumeric(left, right)
+            return left <= right
         elif expr.operator.tokenType == TokenType.GREATER:
-            return float(left) > float(right)
+            self.assertNumeric(left, right)
+            return left > right
         elif expr.operator.tokenType == TokenType.GREATER_EQUAL:
-            return float(left) >= float(right)
+            self.assertNumeric(left, right)
+            return left >= right
 
         return None
 

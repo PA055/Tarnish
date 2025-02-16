@@ -1,7 +1,7 @@
 from typing import Tuple
 from .token import Token, TokenType
 from .expr import Expr, Binary, Unary, Literal, Grouping, Ternary, Postfix
-from .error import error, ParseError
+from .error import error, TarnishParseError
 
 
 class Parser:
@@ -34,9 +34,9 @@ class Parser:
             return self.advance()
         raise self.error(self.peek(), message)
 
-    def error(self, token: Token, message: str) -> ParseError:
+    def error(self, token: Token, message: str) -> TarnishParseError:
         error(token, message)
-        return ParseError()
+        return TarnishParseError()
 
     def previous(self) -> Token:
         return self.tokens[self.current - 1]
@@ -218,5 +218,5 @@ class Parser:
     def parse(self) -> Expr:
         try:
             return self.expression()
-        except ParseError:
+        except TarnishParseError:
             return None

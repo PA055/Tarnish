@@ -85,6 +85,19 @@ class Scanner:
         lexme = self.source[self.start:self.current]
         self.addToken(keywords.get(lexme, TokenType.IDENTIFIER))
 
+    def baseN(self) -> None:
+        if self.peek() == 'b' and self.peek(2)[1] in ('0', '1'):
+            self.advance()
+            while self.peek() in ('0', '1'):
+                self.advance()
+            self.addToken(TokenType.NUMBER, int(self.source[self.start + 2:self.current], 2))
+
+        if self.peek() == 'x' and self.peek(2)[1] in "0123456789abcdefABCDEF":
+            self.advance()
+            while self.peek() in  "0123456789abcdefABCDEF":
+                self.advance()
+            self.addToken(TokenType.NUMBER, int(self.source[self.start + 2:self.current], 16))
+
     def number(self) -> None:
         while self.isDigit(self.peek()):
             self.advance()
@@ -93,8 +106,10 @@ class Scanner:
             self.advance()
             while self.isDigit(self.peek()):
                 self.advance()
+            self.addToken(TokenType.NUMBER, float(self.source[self.start:self.current]))
+            return
 
-        self.addToken(TokenType.NUMBER, float(self.source[self.start:self.current]))
+        self.addToken(TokenType.NUMBER, int(self.source[self.start:self.current]))
 
     def string(self) -> None:
         if self.match("\"\""):
@@ -120,7 +135,6 @@ class Scanner:
 
         self.advance()
         self.addToken(TokenType.STRING, self.source[self.start + 1:self.current - 1])
-
 
     def scanToken(self) -> None:
         c: str = self.advance()
@@ -231,6 +245,12 @@ class Scanner:
                 self.number()
             else:
                 self.addToken(TokenType.DOT)
+
+        elif c == '0':
+            if self.peek() in 'bx':
+                self.baseN()
+            else:
+                self.number()
 
         elif self.isDigit(c):
             self.number()
