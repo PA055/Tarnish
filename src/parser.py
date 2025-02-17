@@ -1,6 +1,7 @@
 from typing import Tuple
 from .token import Token, TokenType
-from .expr import Expr, Binary, Unary, Literal, Grouping, Ternary, Postfix
+from .grammar import Expr, Binary, Unary, Literal, Grouping, Ternary, Postfix, Variable, \
+                     Stmt, Print, Expression, Var
 from .error import error, TarnishParseError
 
 
@@ -9,40 +10,11 @@ class Parser:
         self.tokens = tokens
         self.current: int = 0
 
-    def match(self, *types: Tuple[TokenType, ...]) -> bool:
-        for tokenType in types:
-            if (self.check(tokenType)):
-                self.advance()
-                return True
-        return False
-
-    def check(self, tokenType: TokenType) -> bool:
-        if (self.isAtEnd()):
-            return False
-        return self.peek().tokenType == tokenType
-
-    def peek(self) -> Token:
-        return self.tokens[self.current]
-
-    def advance(self) -> Token:
-        if not self.isAtEnd():
-            self.current += 1
-        return self.previous()
-
-    def consume(self, tokenType: TokenType, message: str) -> Token:
-        if self.check(tokenType):
-            return self.advance()
-        raise self.error(self.peek(), message)
-
-    def error(self, token: Token, message: str) -> TarnishParseError:
-        error(token, message)
-        return TarnishParseError()
-
-    def previous(self) -> Token:
-        return self.tokens[self.current - 1]
-
-    def isAtEnd(self) -> bool:
-        return self.peek().tokenType == TokenType.EOF
+    def parse(self) -> list[Stmt]:
+        statements: list[Stmt] = []
+        while not self.isAtEnd():
+            statements.append(self.declaration())
+        return statements
 
     def synchronize(self) -> None:
         self.advance()
@@ -57,8 +29,6 @@ class Parser:
                 return
             elif next == TokenType.FUNC:
                 return
-            elif next == TokenType.VAR:
-                return
             elif next == TokenType.FOR:
                 return
             elif next == TokenType.IF:
@@ -69,6 +39,44 @@ class Parser:
                 return
             elif next == TokenType.RETURN:
                 return
+
+    def declaration(self) -> Stmt:
+        try:
+            if self.match(TokenType.VAR):
+                return self.varDeclaration()
+
+            return self.statement()
+        except TarnishParseError:
+            self.synchronize()
+            return None
+
+    def varDeclaration(self) -> Stmt:
+        name: Token = self.consume(TokenType.IDENTIFIER, "Expected variable name.") 
+
+        initializer = None
+        if self.match(TokenType.EQUAL):
+            initializer = self.expression()
+
+        if not self.isAtEnd():
+            self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Var(name, initializer)
+
+    def statement(self) -> Stmt:
+        if self.match(TokenType.PRINT):
+            return self.printStatement()
+        return self.expressionStatement()
+
+    def printStatement(self) -> Stmt:
+        value = self.expression()
+        if not self.isAtEnd():
+            self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Print(value)
+
+    def expressionStatement(self) -> Stmt:
+        value = self.expression()
+        if not self.isAtEnd():
+            self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Expression(value)
 
     def expression(self) -> Expr:
         return self.comma()
@@ -208,6 +216,9 @@ class Parser:
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
 
+        if self.match(TokenType.IDENTIFIER):
+            return Variable(self.previous())
+
         if self.match(TokenType.LEFT_PAREN):
             expr: Expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression.")
@@ -215,8 +226,37 @@ class Parser:
 
         raise self.error(self.peek(), "Expect expression.")
 
-    def parse(self) -> Expr:
-        try:
-            return self.expression()
-        except TarnishParseError:
-            return None
+    def match(self, *types: Tuple[TokenType, ...]) -> bool:
+        for tokenType in types:
+            if (self.check(tokenType)):
+                self.advance()
+                return True
+        return False
+
+    def check(self, tokenType: TokenType) -> bool:
+        if (self.isAtEnd()):
+            return False
+        return self.peek().tokenType == tokenType
+
+    def peek(self) -> Token:
+        return self.tokens[self.current]
+
+    def advance(self) -> Token:
+        if not self.isAtEnd():
+            self.current += 1
+        return self.previous()
+
+    def consume(self, tokenType: TokenType, message: str) -> Token:
+        if self.check(tokenType):
+            return self.advance()
+        raise self.error(self.peek(), message)
+
+    def error(self, token: Token, message: str) -> TarnishParseError:
+        error(token, message)
+        return TarnishParseError()
+
+    def previous(self) -> Token:
+        return self.tokens[self.current - 1]
+
+    def isAtEnd(self) -> bool:
+        return self.peek().tokenType == TokenType.EOF

@@ -11,13 +11,12 @@ def run(source: str):
     scanner = Scanner(source)
     tokens = scanner.scanTokens()
     parser = Parser(tokens)
-    expression = parser.parse()
+    statements = parser.parse()
 
     if error.hadError:
         return
 
-    print(AstPrinter().print(expression))
-    print(interpreter.interpret(expression))
+    interpreter.interpret(statements)
 
 
 def runPrompt():

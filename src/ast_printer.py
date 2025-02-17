@@ -1,9 +1,9 @@
-from .expr_visitor import Visitor
-from .expr import Expr, Binary, Grouping, Literal, Unary, Ternary, Postfix
+from .grammar import Expr, Binary, Grouping, Literal, Unary, Ternary, Postfix, \
+                     ExprVisitor
 from .token import Token, TokenType
 
 
-class AstPrinter(Visitor):
+class AstPrinter(ExprVisitor):
     def print(self, expr: Expr) -> str:
         return expr.accept(self)
 

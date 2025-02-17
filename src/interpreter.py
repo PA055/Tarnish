@@ -1,11 +1,16 @@
 from typing import Tuple
-from .expr_visitor import Visitor
-from .expr import Expr, Ternary, Binary, Unary, Postfix, Literal, Grouping
+from .grammar import Expr, Ternary, Binary, Unary, Postfix, Literal, Grouping, Variable, \
+                     Stmt, Print, Expression, Var, \
+                     ExprVisitor, StmtVisitor
 from .token import TokenType, Token
 from .error import TarnishRuntimeError, runtimeError
+from .environment import Environment
 
 
-class Interpreter(Visitor):
+class Interpreter(ExprVisitor, StmtVisitor):
+    def __init__(self):
+        self.environment = Environment()
+
     def assertInteger(self, operator: Token, *values: Tuple[any, ...]) -> None:
         if not all(isinstance(v, int) for v in values):
             raise TarnishRuntimeError(operator, "Operand must be an integer.")
@@ -14,17 +19,24 @@ class Interpreter(Visitor):
         if not all(isinstance(v, (int, float)) for v in values):
             raise TarnishRuntimeError(operator, "Operand must be a number.")
 
-    def interpret(self, expr: Expr) -> str:
+    def interpret(self, statements: list[Stmt]):
         try:
-           return self.evaluate(expr)
+            for statement in statements:
+                self.execute(statement)
         except TarnishRuntimeError as e:
             runtimeError(e)
 
     def evaluate(self, expr: Expr) -> any:
         return expr.accept(self)
 
+    def execute(self, stmt: Stmt) -> any:
+        return stmt.accept(self)
+
     def visitLiteralExpr(self, expr: Literal) -> any:
         return expr.value
+
+    def visitVariableExpr(self, expr: Variable) -> any:
+        return self.environment.get(expr.name)
 
     def visitGroupingExpr(self, expr: Grouping) -> any:
         return self.evaluate(expr.expression)
@@ -122,3 +134,24 @@ class Interpreter(Visitor):
             return self.evaluate(expr.two) if bool(one) else self.evaluate(expr.three)
 
         return None
+
+    def visitPrintStmt(self, stmt: Print):
+        value = self.evaluate(stmt.value)
+        if value is True:
+            print("true")
+        elif value is False:
+            print("false")
+        elif value is None:
+            print("none")
+        else:
+            print(value)
+
+    def visitExpressionStmt(self, stmt: Expression):
+        self.evaluate(stmt.value)
+
+    def visitVarStmt(self, stmt: Var):
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+
+        self.environment.define(stmt.name.lexme, value)
