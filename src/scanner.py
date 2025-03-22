@@ -1,3 +1,4 @@
+from typing import Any
 from src.error import error
 from src.token import TokenType, Token
 
@@ -40,7 +41,7 @@ class Scanner:
         self.current += len(expected)
         return True
 
-    def addToken(self, tokenType: TokenType, value: any = None) -> None:
+    def addToken(self, tokenType: TokenType, value: Any = None) -> None:
         self.tokens.append(Token(tokenType, self.source[self.start:self.current], value, self.line))
 
     def blockComment(self):
@@ -67,6 +68,7 @@ class Scanner:
             "false": TokenType.FALSE,
             "for": TokenType.FOR,
             "func": TokenType.FUNC,
+            "global": TokenType.GLOBAL,
             "if": TokenType.IF,
             "interface": TokenType.INTERFACE,
             "none": TokenType.NONE,
@@ -78,7 +80,6 @@ class Scanner:
             "super": TokenType.SUPER,
             "this": TokenType.THIS,
             "true": TokenType.TRUE,
-            "var": TokenType.VAR,
             "while": TokenType.WHILE
         }
 

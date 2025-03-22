@@ -24,9 +24,9 @@ def report(line: int, where: str, message: str) -> None:
 def error(line: int | Token, message: str) -> None:
     if isinstance(line, Token):
         if line.tokenType == TokenType.EOF:
-            report(f"{line.line} at end", "", message)
+            report(line.line, f"{line.line} at end", message)
         else:
-            report(f"{line.line} at '{line.lexme}'", "", message)
+            report(line.line, f"{line.line} at '{line.lexme}'", message)
     else:
         report(line, "", message)
 

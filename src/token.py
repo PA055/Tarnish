@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 
 class TokenType(StrEnum):
@@ -73,6 +74,7 @@ class TokenType(StrEnum):
     FALSE = "FALSE"
     FOR = "FOR"
     FUNC = "FUNC"
+    GLOBAL = "GLOBAL"
     IF = "IF"
     INTERFACE = "INTERFACE"
     NONE = "NONE"
@@ -84,14 +86,13 @@ class TokenType(StrEnum):
     SUPER = "SUPER"
     THIS = "THIS"
     TRUE = "TRUE"
-    VAR = "VAR"
     WHILE = "WHILE"
 
     EOF = "EOF"
 
 
 class Token:
-    def __init__(self, tokenType: TokenType, lexme: str, literal: any, line: int):
+    def __init__(self, tokenType: TokenType, lexme: str, literal: Any, line: int):
         self.tokenType = tokenType
         self.lexme = lexme
         self.literal = literal
