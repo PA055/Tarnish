@@ -6,7 +6,7 @@ from .token import Token
 
 class ExprVisitor(typing.Protocol):
     @abstractmethod
-    def visitUnaryExpr(self, expr: "Unary") -> typing.Any:
+    def visitAssignExpr(self, expr: "Assign") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -14,15 +14,19 @@ class ExprVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def visitTernaryExpr(self, expr: "Ternary") -> typing.Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visitPostfixExpr(self, expr: "Postfix") -> typing.Any:
+    def visitCallExpr(self, expr: "Call") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
     def visitGroupingExpr(self, expr: "Grouping") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitLambdaExpr(self, expr: "Lambda") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitListExpr(self, expr: "List") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -34,15 +38,19 @@ class ExprVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def visitListExpr(self, expr: "List") -> typing.Any:
+    def visitPostfixExpr(self, expr: "Postfix") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitTernaryExpr(self, expr: "Ternary") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitUnaryExpr(self, expr: "Unary") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
     def visitVariableExpr(self, expr: "Variable") -> typing.Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visitAssignExpr(self, expr: "Assign") -> typing.Any:
         raise NotImplementedError
 
 
@@ -53,12 +61,12 @@ class Expr(ABC):
 
 
 @dataclass(frozen=True)
-class Unary(Expr):
-    operator: Token
-    expression: Expr
+class Assign(Expr):
+    name: Token
+    value: Expr
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
-        return visitor.visitUnaryExpr(self)
+        return visitor.visitAssignExpr(self)
 
 
 @dataclass(frozen=True)
@@ -72,24 +80,13 @@ class Binary(Expr):
 
 
 @dataclass(frozen=True)
-class Ternary(Expr):
-    one: Expr
-    op1: Token
-    two: Expr
-    op2: Token
-    three: Expr
+class Call(Expr):
+    callee: Expr
+    paren: Token
+    arguments: list[Expr]
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
-        return visitor.visitTernaryExpr(self)
-
-
-@dataclass(frozen=True)
-class Postfix(Expr):
-    operator: Token
-    expression: Expr
-
-    def accept(self, visitor: ExprVisitor) -> typing.Any:
-        return visitor.visitPostfixExpr(self)
+        return visitor.visitCallExpr(self)
 
 
 @dataclass(frozen=True)
@@ -98,6 +95,23 @@ class Grouping(Expr):
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
         return visitor.visitGroupingExpr(self)
+
+
+@dataclass(frozen=True)
+class Lambda(Expr):
+    params: list[Token]
+    body: "Stmt"
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitLambdaExpr(self)
+
+
+@dataclass(frozen=True)
+class List(Expr):
+    expressions: list[Expr]
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitListExpr(self)
 
 
 @dataclass(frozen=True)
@@ -119,11 +133,33 @@ class Logical(Expr):
 
 
 @dataclass(frozen=True)
-class List(Expr):
-    expressions: list[Expr]
+class Postfix(Expr):
+    operator: Token
+    expression: Expr
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
-        return visitor.visitListExpr(self)
+        return visitor.visitPostfixExpr(self)
+
+
+@dataclass(frozen=True)
+class Ternary(Expr):
+    one: Expr
+    op1: Token
+    two: Expr
+    op2: Token
+    three: Expr
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitTernaryExpr(self)
+
+
+@dataclass(frozen=True)
+class Unary(Expr):
+    operator: Token
+    expression: Expr
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitUnaryExpr(self)
 
 
 @dataclass(frozen=True)
@@ -134,18 +170,9 @@ class Variable(Expr):
         return visitor.visitVariableExpr(self)
 
 
-@dataclass(frozen=True)
-class Assign(Expr):
-    name: Token
-    value: Expr
-
-    def accept(self, visitor: ExprVisitor) -> typing.Any:
-        return visitor.visitAssignExpr(self)
-
-
 class StmtVisitor(typing.Protocol):
     @abstractmethod
-    def visitPrintStmt(self, stmt: "Print") -> typing.Any:
+    def visitBlockStmt(self, stmt: "Block") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -153,11 +180,23 @@ class StmtVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def visitBlockStmt(self, stmt: "Block") -> typing.Any:
+    def visitFuncStmt(self, stmt: "Func") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
     def visitIfStmt(self, stmt: "If") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitPrintStmt(self, stmt: "Print") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitReturnStmt(self, stmt: "Return") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitVarStmt(self, stmt: "Var") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -172,11 +211,11 @@ class Stmt(ABC):
 
 
 @dataclass(frozen=True)
-class Print(Stmt):
-    value: Expr
+class Block(Stmt):
+    statements: list[Stmt]
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
-        return visitor.visitPrintStmt(self)
+        return visitor.visitBlockStmt(self)
 
 
 @dataclass(frozen=True)
@@ -188,11 +227,13 @@ class Expression(Stmt):
 
 
 @dataclass(frozen=True)
-class Block(Stmt):
-    statements: list[Stmt]
+class Func(Stmt):
+    name: Token
+    params: list[Token]
+    body: list[typing.Optional[Stmt]]
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
-        return visitor.visitBlockStmt(self)
+        return visitor.visitFuncStmt(self)
 
 
 @dataclass(frozen=True)
@@ -203,6 +244,32 @@ class If(Stmt):
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitIfStmt(self)
+
+
+@dataclass(frozen=True)
+class Print(Stmt):
+    value: Expr
+
+    def accept(self, visitor: StmtVisitor) -> typing.Any:
+        return visitor.visitPrintStmt(self)
+
+
+@dataclass(frozen=True)
+class Return(Stmt):
+    keyword: Token
+    value: typing.Optional[Expr]
+
+    def accept(self, visitor: StmtVisitor) -> typing.Any:
+        return visitor.visitReturnStmt(self)
+
+
+@dataclass(frozen=True)
+class Var(Stmt):
+    name: Token
+    value: typing.Optional[Expr]
+
+    def accept(self, visitor: StmtVisitor) -> typing.Any:
+        return visitor.visitVarStmt(self)
 
 
 @dataclass(frozen=True)

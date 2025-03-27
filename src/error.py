@@ -18,15 +18,15 @@ class TarnishRuntimeError(RuntimeError):
 def report(line: int, where: str, message: str) -> None:
     global hadError
     hadError = True
-    print(f"[line {line}] - Error{where}: {message}")
+    print(f"[line {line}] - Error{(" " if where else "") + where}: {message}")
 
 
 def error(line: int | Token, message: str) -> None:
     if isinstance(line, Token):
         if line.tokenType == TokenType.EOF:
-            report(line.line, f"{line.line} at end", message)
+            report(line.line, "at end", message)
         else:
-            report(line.line, f"{line.line} at '{line.lexme}'", message)
+            report(line.line, f"at '{line.lexme}'", message)
     else:
         report(line, "", message)
 

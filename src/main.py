@@ -1,7 +1,6 @@
 from src import error
 from src.scanner import Scanner
 from src.parser import Parser
-from src.ast_printer import AstPrinter
 from src.interpreter import Interpreter
 
 

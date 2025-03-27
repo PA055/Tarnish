@@ -77,6 +77,7 @@ class TokenType(StrEnum):
     GLOBAL = "GLOBAL"
     IF = "IF"
     INTERFACE = "INTERFACE"
+    LAMBDA = "LAMBDA"
     NONE = "NONE"
     PRINT = "PRINT"
     PRIVATE = "PRIVATE"
@@ -86,6 +87,7 @@ class TokenType(StrEnum):
     SUPER = "SUPER"
     THIS = "THIS"
     TRUE = "TRUE"
+    VAR = "VAR"
     WHILE = "WHILE"
 
     EOF = "EOF"

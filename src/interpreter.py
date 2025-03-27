@@ -1,16 +1,48 @@
 from typing import Tuple, Any
-from .grammar import (Expr, Ternary, Binary, Unary, Postfix, Literal,
-                      Grouping, Variable, Assign, List, Logical,
-                      Stmt, Print, Expression, Block, If, While,
-                      ExprVisitor, StmtVisitor)
+
 from .token import TokenType, Token
 from .error import TarnishRuntimeError, runtimeError
 from .environment import Environment
+from .callable import TarnishCallable
+from .function import TarnishFunction
+from .interupts import ReturnInterupt
+from .builtins.time import Time
+from .builtins.string import String
+from .grammar import (
+    Assign,
+    Binary,
+    Block,
+    Call,
+    Expr,
+    Expression,
+    ExprVisitor,
+    Func,
+    Grouping,
+    If,
+    Lambda,
+    List,
+    Literal,
+    Logical,
+    Postfix,
+    Print,
+    Return,
+    Stmt,
+    StmtVisitor,
+    Ternary,
+    Unary,
+    Var,
+    Variable,
+    While,
+)
 
 
 class Interpreter(ExprVisitor, StmtVisitor):
+    globals = Environment()
+    globals.define("time", Time())
+    globals.define("str", String())
+
     def __init__(self):
-        self.environment = Environment()
+        self.environment = Environment(Interpreter.globals)
 
     def assertInteger(self, operator: Token, *values: Tuple[Any, ...]) -> None:
         if not all(isinstance(v, int) for v in values):
@@ -33,7 +65,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def execute(self, stmt: Stmt) -> Any:
         return stmt.accept(self)
 
-    def executeBlock(self, statements: list[Stmt], environment: Environment) -> None:
+    def executeBlock(self, statements: list[Stmt], environment: Environment):
         previous: Environment = self.environment
         try:
             self.environment = environment
@@ -50,11 +82,30 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def visitAssignExpr(self, expr: Assign) -> Any:
         value = self.evaluate(expr.value)
-        self.environment.define(expr.name.lexme, value)
+        self.environment.assign(expr.name, value)
         return value
 
     def visitGroupingExpr(self, expr: Grouping) -> Any:
         return self.evaluate(expr.expression)
+
+    def visitCallExpr(self, expr: Call) -> Any:
+        callee = self.evaluate(expr.callee)
+
+        arguments: list[Any] = []
+        for arg in expr.arguments:
+            arguments.append(self.evaluate(arg))
+
+        if not isinstance(callee, TarnishCallable):
+            raise TarnishRuntimeError(expr.paren, "Can only call functions and classes.")
+
+        if len(arguments) != callee.arity():
+            raise TarnishRuntimeError(expr.paren, f"Expected {callee.arity()} arguments but got {len(arguments)}.")
+
+        return callee.call(self, arguments)
+
+    def visitLambdaExpr(self, stmt: Lambda):
+        function = TarnishFunction(stmt, self.environment)
+        return function
 
     def visitUnaryExpr(self, expr: Unary) -> Any:
         right = self.evaluate(expr.expression)
@@ -82,9 +133,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visitLogicalExpr(self, expr: Logical) -> Any:
         left = self.evaluate(expr.left)
         if expr.operator.tokenType == TokenType.BAR_BAR:
-            if left: return left
+            if left:
+                return left
         else:
-            if not left: return left
+            if not left:
+                return left
         return self.evaluate(expr.right)
 
     def visitBinaryExpr(self, expr: Binary) -> Any:
@@ -121,14 +174,15 @@ class Interpreter(ExprVisitor, StmtVisitor):
         elif expr.operator.tokenType == TokenType.SLASH:
             self.assertNumeric(left, right)
             if right == 0:
-                raise TarnishRuntimeError(expr.operator, "Cannot divide by zero.")
+                raise TarnishRuntimeError(
+                    expr.operator, "Cannot divide by zero.")
             return left / right
         elif expr.operator.tokenType == TokenType.STAR:
             self.assertNumeric(left, right)
             return left * right
         elif expr.operator.tokenType == TokenType.STAR_STAR:
             self.assertNumeric(left, right)
-            return left ** right
+            return left**right
         elif expr.operator.tokenType == TokenType.MINUS:
             self.assertNumeric(left, right)
             return left - right
@@ -138,7 +192,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
             elif isinstance(left, str) or isinstance(right, str):
                 return str(left) + str(right)
             else:
-                raise TarnishRuntimeError(expr.operator, "Operands must be two numbers or include a string")
+                raise TarnishRuntimeError(
+                    expr.operator, "Operands must be two numbers or include a string"
+                )
 
         elif expr.operator.tokenType == TokenType.LESS:
             self.assertNumeric(left, right)
@@ -158,14 +214,22 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visitTernaryExpr(self, expr: Ternary) -> Any:
         one = self.evaluate(expr.one)
 
-        if (expr.op1.tokenType == TokenType.QUESTION and
-                expr.op2.tokenType == TokenType.COLON):
+        if (
+            expr.op1.tokenType == TokenType.QUESTION
+            and expr.op2.tokenType == TokenType.COLON
+        ):
             return self.evaluate(expr.two) if bool(one) else self.evaluate(expr.three)
 
         return None
 
     def visitListExpr(self, expr: List) -> Any:
         pass
+
+    def visitReturnStmt(self, stmt: Return) -> Any:
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+        raise ReturnInterupt(value)
 
     def visitPrintStmt(self, stmt: Print):
         value = self.evaluate(stmt.value)
@@ -177,6 +241,12 @@ class Interpreter(ExprVisitor, StmtVisitor):
             print("none")
         else:
             print(value)
+
+    def visitVarStmt(self, stmt: Var) -> Any:
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+        self.environment.define(stmt.name, value)
 
     def visitExpressionStmt(self, stmt: Expression):
         self.evaluate(stmt.value)
@@ -193,3 +263,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visitWhileStmt(self, stmt: While):
         while self.evaluate(stmt.condition):
             self.execute(stmt.body)
+
+    def visitFuncStmt(self, stmt: Func):
+        function = TarnishFunction(stmt, self.environment)
+        self.environment.define(stmt.name.lexme, function)

@@ -2,16 +2,12 @@
 
 import sys
 from src import runFile, runPrompt
-from src.ast_printer import main
 
 if __name__ == '__main__':
     if len(sys.argv) > 2:
         print("Usage: tarnish [script]")
         exit(64)
     elif len(sys.argv) == 2:
-        if sys.argv[1] == '--testAst':
-            main()
-            exit(1)
         runFile(sys.argv[1])
     else:
         runPrompt()

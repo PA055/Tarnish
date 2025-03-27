@@ -55,20 +55,25 @@ if __name__ == "__main__":
     outputDir = sys.argv[1]
     defineAst(
         outputDir,  ("Expr", {
-            "Unary":       ["operator: Token", "expression: Expr"],
+            "Assign":      ["name: Token", "value: Expr"],
             "Binary":      ["left: Expr", "operator: Token", "right: Expr"],
-            "Ternary":     ["one: Expr", "op1: Token", "two: Expr", "op2: Token", "three: Expr"],
-            "Postfix":     ["operator: Token", "expression: Expr"],
+            "Call":        ["callee: Expr", "paren: Token", "arguments: list[Expr]"],
             "Grouping":    ["expression: Expr"],
+            "Lambda":      ["params: list[Token]", "body: \"Stmt\""],
+            "List":        ["expressions: list[Expr]"],
             "Literal":     ["value: typing.Any"],
             "Logical":     ["left: Expr", "operator: Token", "right: Expr"],
-            "List":        ["expressions: list[Expr]"],
+            "Postfix":     ["operator: Token", "expression: Expr"],
+            "Ternary":     ["one: Expr", "op1: Token", "two: Expr", "op2: Token", "three: Expr"],
+            "Unary":       ["operator: Token", "expression: Expr"],
             "Variable":    ["name: Token"],
-            "Assign":      ["name: Token", "value: Expr"]
         }),         ("Stmt", {
-            "Print":       ["value: Expr"],
-            "Expression":  ["value: Expr"],
             "Block":       ["statements: list[Stmt]"],
+            "Expression":  ["value: Expr"],
+            "Func":        ["name: Token", "params: list[Token]", "body: list[typing.Optional[Stmt]]"],
             "If":          ["condition: Expr", "thenBranch: Stmt", "elseBranch: Stmt | None"],
+            "Print":       ["value: Expr"],
+            "Return":      ["keyword: Token", "value: typing.Optional[Expr]"],
+            "Var":         ["name: Token", "value: typing.Optional[Expr]"],
             "While":       ["condition: Expr", "body: Stmt"],
         }))

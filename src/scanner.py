@@ -71,6 +71,7 @@ class Scanner:
             "global": TokenType.GLOBAL,
             "if": TokenType.IF,
             "interface": TokenType.INTERFACE,
+            "lambda": TokenType.LAMBDA,
             "none": TokenType.NONE,
             "print": TokenType.PRINT,
             "private": TokenType.PRIVATE,
@@ -80,6 +81,7 @@ class Scanner:
             "super": TokenType.SUPER,
             "this": TokenType.THIS,
             "true": TokenType.TRUE,
+            "var": TokenType.VAR,
             "while": TokenType.WHILE
         }
 
