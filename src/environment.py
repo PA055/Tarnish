@@ -34,10 +34,10 @@ class Environment:
 
         raise TarnishRuntimeError(name, f"Undefined variable '{name.lexme}'.")
 
-    def assign_at(self, distance: int, name: Token, value: Any) -> None:
+    def assignAt(self, distance: int, name: Token, value: Any) -> None:
         self.ancestor(distance).values[name.lexme] = value
 
-    def get_at(self, distance: int, name: str | Token) -> Any:
+    def getAt(self, distance: int, name: str | Token) -> Any:
         if isinstance(name, str):
             return self.ancestor(distance).values[name]
         return self.ancestor(distance).values[name.lexme]

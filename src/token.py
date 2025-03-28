@@ -68,7 +68,9 @@ class TokenType(StrEnum):
     NUMBER = "NUMBER"
 
     # Keywords
+    BREAK = "BREAK"
     CLASS = "CLASS"
+    CONTINUE = "CONTINUE"
     ELSE = "ELSE"
     ENUM = "ENUM"
     FALSE = "FALSE"

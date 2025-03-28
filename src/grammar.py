@@ -42,6 +42,10 @@ class ExprVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
+    def visitPrefixExpr(self, expr: "Prefix") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
     def visitTernaryExpr(self, expr: "Ternary") -> typing.Any:
         raise NotImplementedError
 
@@ -135,10 +139,19 @@ class Logical(Expr):
 @dataclass(frozen=True)
 class Postfix(Expr):
     operator: Token
-    expression: Expr
+    name: Token
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
         return visitor.visitPostfixExpr(self)
+
+
+@dataclass(frozen=True)
+class Prefix(Expr):
+    operator: Token
+    name: Token
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitPrefixExpr(self)
 
 
 @dataclass(frozen=True)
@@ -173,6 +186,10 @@ class Variable(Expr):
 class StmtVisitor(typing.Protocol):
     @abstractmethod
     def visitBlockStmt(self, stmt: "Block") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitLoopInteruptStmt(self, stmt: "LoopInterupt") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -216,6 +233,15 @@ class Block(Stmt):
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitBlockStmt(self)
+
+
+@dataclass(frozen=True)
+class LoopInterupt(Stmt):
+    keyword: Token
+    value: int = 1
+
+    def accept(self, visitor: StmtVisitor) -> typing.Any:
+        return visitor.visitLoopInteruptStmt(self)
 
 
 @dataclass(frozen=True)
@@ -276,6 +302,7 @@ class Var(Stmt):
 class While(Stmt):
     condition: Expr
     body: Stmt
+    for_transformed: bool = False
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitWhileStmt(self)

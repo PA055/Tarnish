@@ -62,7 +62,9 @@ class Scanner:
             self.advance()
 
         keywords = {
+            "break": TokenType.BREAK,
             "class": TokenType.CLASS,
+            "continue": TokenType.CONTINUE,
             "else": TokenType.ELSE,
             "enum": TokenType.ENUM,
             "false": TokenType.FALSE,

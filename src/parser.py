@@ -2,27 +2,29 @@ from typing import Optional
 from .token import Token, TokenType
 from .error import error, TarnishParseError
 from .grammar import (
-    Expr,
-    Binary,
-    Unary,
-    Literal,
-    Grouping,
-    Ternary,
-    Postfix,
-    Variable,
     Assign,
-    Logical,
-    Call,
-    Func,
-    Return,
-    Lambda,
-    Stmt,
-    Print,
-    Expression,
+    Binary,
     Block,
+    Call,
+    Expr,
+    Expression,
+    Func,
+    Grouping,
     If,
+    Lambda,
+    Literal,
+    Logical,
+    LoopInterupt,
+    Postfix,
+    Prefix,
+    Print,
+    Return,
+    Stmt,
+    Ternary,
+    Unary,
+    Var,
+    Variable,
     While,
-    Var
 )
 
 
@@ -119,8 +121,11 @@ class Parser:
         if self.match(TokenType.RETURN):
             return self.returnStatement()
 
+        if self.match(TokenType.BREAK, TokenType.CONTINUE):
+            return self.loopInturuptStatement()
+
         if self.match(TokenType.LEFT_BRACE):
-            return Block(self.block())
+            return Block([i for i in self.block() if i is not None])
 
         return self.expressionStatement()
 
@@ -169,7 +174,7 @@ class Parser:
             body = Block([body, Expression(increment)])
         if condition is None:
             condition = Literal(True)
-        body = While(condition, body)
+        body = While(condition, body, for_transformed=True)
         if initializer is not None:
             body = Block([initializer, body])
 
@@ -192,12 +197,26 @@ class Parser:
         keyword = self.previous()
 
         value = None
-        if not self.check(TokenType.SEMICOLON):
+        if not self.isAtEnd() and not self.check(TokenType.SEMICOLON):
             value = self.expression()
 
         if not self.isAtEnd():
             self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
         return Return(keyword, value)
+
+    def loopInturuptStatement(self):
+        keyword = self.previous()
+
+        value = 1
+        if keyword.tokenType == TokenType.BREAK and not self.isAtEnd() and not self.check(TokenType.SEMICOLON):
+            value = float(self.consume(TokenType.NUMBER, "Expect integer after break").lexme)
+            if int(value) != value:
+                self.error(keyword, "Expect integer after break, got float")
+            value = int(value)
+
+        if not self.isAtEnd():
+            self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return LoopInterupt(keyword, value)
 
     def expressionStatement(self) -> Stmt:
         value = self.expression()
@@ -324,11 +343,19 @@ class Parser:
 
     def unary(self) -> Expr:
         if self.match(TokenType.MINUS, TokenType.BANG,
-                      TokenType.PLUS, TokenType.TILDE,
-                      TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+                      TokenType.PLUS, TokenType.TILDE):
             operator: Token = self.previous()
             right: Expr = self.unary()
             return Unary(operator, right)
+        return self.prefix()
+
+    def prefix(self) -> Expr:
+        if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+            operator = self.previous()
+            right = self.prefix()
+            if isinstance(right, Variable):
+                return Prefix(operator, right.name)
+            self.error(operator, "Invalid prefix target.")
         return self.exponent()
 
     def exponent(self) -> Expr:
@@ -343,7 +370,9 @@ class Parser:
         expr: Expr = self.call()
         if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
             operator: Token = self.previous()
-            return Postfix(operator, expr)
+            if isinstance(expr, Variable):
+                return Postfix(operator, expr.name)
+            self.error(operator, "Invalid postfix target.")
         return expr
 
     def call(self) -> Expr:
@@ -407,10 +436,10 @@ class Parser:
                 return True
         return False
 
-    def check(self, tokenType: TokenType) -> bool:
+    def check(self, *tokenTypes: TokenType) -> bool:
         if (self.isAtEnd()):
             return False
-        return self.peek().tokenType == tokenType
+        return self.peek().tokenType in tokenTypes
 
     def peek(self) -> Token:
         return self.tokens[self.current]

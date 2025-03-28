@@ -1,9 +1,10 @@
-func thrice(fn) {
-  for (var i = 1; i <= 3; i = i + 1) {
-    fn(i);
-  }
+var a = "global";
+{
+    func showA() {
+        print a;
+    }
+    showA();  // prints "global"
+    var a = "block";
+    showA();  // prints "block"
 }
-
-thrice(lambda (a) {
-  print a;
-});
+print a;  // prints "global"

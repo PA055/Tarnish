@@ -1,11 +1,11 @@
-from typing import Tuple, Any
+from typing import Dict, Tuple, Any
 
 from .token import TokenType, Token
 from .error import TarnishRuntimeError, runtimeError
 from .environment import Environment
 from .callable import TarnishCallable
 from .function import TarnishFunction
-from .interupts import ReturnInterupt
+from .interupts import BreakInterupt, ContinueInterupt, ReturnInterupt
 from .builtins.time import Time
 from .builtins.string import String
 from .grammar import (
@@ -23,7 +23,9 @@ from .grammar import (
     List,
     Literal,
     Logical,
+    LoopInterupt,
     Postfix,
+    Prefix,
     Print,
     Return,
     Stmt,
@@ -43,6 +45,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def __init__(self):
         self.environment = Environment(Interpreter.globals)
+        self.locals: Dict[Expr, int] = {}
 
     def assertInteger(self, operator: Token, *values: Tuple[Any, ...]) -> None:
         if not all(isinstance(v, int) for v in values):
@@ -59,11 +62,21 @@ class Interpreter(ExprVisitor, StmtVisitor):
         except TarnishRuntimeError as e:
             runtimeError(e)
 
+    def lookUpVariable(self, name: Token, expr: Expr) -> Any:
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            return self.environment.getAt(distance, name)
+        else:
+            return self.environment.get(name)
+
     def evaluate(self, expr: Expr) -> Any:
         return expr.accept(self)
 
     def execute(self, stmt: Stmt) -> Any:
         return stmt.accept(self)
+
+    def resolve(self, expr: Expr, depth: int):
+        self.locals[expr] = depth
 
     def executeBlock(self, statements: list[Stmt], environment: Environment):
         previous: Environment = self.environment
@@ -78,11 +91,17 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return expr.value
 
     def visitVariableExpr(self, expr: Variable) -> Any:
-        return self.environment.get(expr.name)
+        return self.lookUpVariable(expr.name, expr)
 
     def visitAssignExpr(self, expr: Assign) -> Any:
         value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
+
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            self.environment.assignAt(distance, expr.name, value)
+        else:
+            self.environment.assign(expr.name, value)
+
         return value
 
     def visitGroupingExpr(self, expr: Grouping) -> Any:
@@ -103,8 +122,8 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
         return callee.call(self, arguments)
 
-    def visitLambdaExpr(self, stmt: Lambda):
-        function = TarnishFunction(stmt, self.environment)
+    def visitLambdaExpr(self, expr: Lambda):
+        function = TarnishFunction(expr, self.environment)
         return function
 
     def visitUnaryExpr(self, expr: Unary) -> Any:
@@ -120,15 +139,36 @@ class Interpreter(ExprVisitor, StmtVisitor):
         elif expr.operator.tokenType == TokenType.BANG:
             return not bool(right)
 
+        # TODO: seperate this, and add += and -=
         elif expr.operator.tokenType == TokenType.PLUS_PLUS:
-            return int(right) + 1
+            return int(right)
         elif expr.operator.tokenType == TokenType.MINUS_MINUS:
-            return int(right) - 1
+            return int(right)
 
         return None
 
+    def visitPrefixExpr(self, expr: Prefix) -> Any:
+        value = self.lookUpVariable(expr.name, expr) + (1 if expr.operator.tokenType == TokenType.PLUS_PLUS else -1)
+
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            self.environment.assignAt(distance, expr.name, value)
+        else:
+            self.environment.assign(expr.name, value)
+
+        return value
+
     def visitPostfixExpr(self, expr: Postfix) -> Any:
-        return self.evaluate(expr.expression)
+        mod = 1 if expr.operator.tokenType == TokenType.PLUS_PLUS else -1
+        value = self.lookUpVariable(expr.name, expr) + mod
+
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            self.environment.assignAt(distance, expr.name, value)
+        else:
+            self.environment.assign(expr.name, value)
+
+        return value - mod
 
     def visitLogicalExpr(self, expr: Logical) -> Any:
         left = self.evaluate(expr.left)
@@ -214,10 +254,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visitTernaryExpr(self, expr: Ternary) -> Any:
         one = self.evaluate(expr.one)
 
-        if (
-            expr.op1.tokenType == TokenType.QUESTION
-            and expr.op2.tokenType == TokenType.COLON
-        ):
+        if expr.op1.tokenType == TokenType.QUESTION and expr.op2.tokenType == TokenType.COLON:
             return self.evaluate(expr.two) if bool(one) else self.evaluate(expr.three)
 
         return None
@@ -230,6 +267,12 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if stmt.value is not None:
             value = self.evaluate(stmt.value)
         raise ReturnInterupt(value)
+
+    def visitLoopInteruptStmt(self, stmt: LoopInterupt):
+        if stmt.keyword.tokenType == TokenType.CONTINUE:
+            raise ContinueInterupt()
+        elif stmt.keyword.tokenType == TokenType.BREAK:
+            raise BreakInterupt(stmt.value)
 
     def visitPrintStmt(self, stmt: Print):
         value = self.evaluate(stmt.value)
@@ -262,7 +305,17 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def visitWhileStmt(self, stmt: While):
         while self.evaluate(stmt.condition):
-            self.execute(stmt.body)
+            try:
+                self.execute(stmt.body)
+            except BreakInterupt as e:
+                if e.number > 1:
+                    raise BreakInterupt(e.number - 1)
+                break
+            except ContinueInterupt:
+                if stmt.for_transformed and isinstance(stmt.body, Block):
+                    self.executeBlock([stmt.body.statements[-1]], Environment(self.environment))
+                    continue
+                continue
 
     def visitFuncStmt(self, stmt: Func):
         function = TarnishFunction(stmt, self.environment)
