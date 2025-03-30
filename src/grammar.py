@@ -18,6 +18,10 @@ class ExprVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
+    def visitGetExpr(self, expr: "Get") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
     def visitGroupingExpr(self, expr: "Grouping") -> typing.Any:
         raise NotImplementedError
 
@@ -46,7 +50,19 @@ class ExprVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
+    def visitSetExpr(self, expr: "Set") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitSuperExpr(self, expr: "Super") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
     def visitTernaryExpr(self, expr: "Ternary") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitThisExpr(self, expr: "This") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -67,6 +83,7 @@ class Expr(ABC):
 @dataclass(frozen=True)
 class Assign(Expr):
     name: Token
+    operator: Token
     value: Expr
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
@@ -87,10 +104,19 @@ class Binary(Expr):
 class Call(Expr):
     callee: Expr
     paren: Token
-    arguments: list[Expr]
+    arguments: typing.Tuple[Expr, ...]
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
         return visitor.visitCallExpr(self)
+
+
+@dataclass(frozen=True)
+class Get(Expr):
+    object: Expr
+    name: Token
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitGetExpr(self)
 
 
 @dataclass(frozen=True)
@@ -103,7 +129,7 @@ class Grouping(Expr):
 
 @dataclass(frozen=True)
 class Lambda(Expr):
-    params: list[Token]
+    params: typing.Tuple[Token, ...]
     body: "Stmt"
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
@@ -112,7 +138,7 @@ class Lambda(Expr):
 
 @dataclass(frozen=True)
 class List(Expr):
-    expressions: list[Expr]
+    expressions: typing.Tuple[Expr, ...]
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
         return visitor.visitListExpr(self)
@@ -155,6 +181,25 @@ class Prefix(Expr):
 
 
 @dataclass(frozen=True)
+class Set(Expr):
+    object: Expr
+    name: Token
+    value: Expr
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitSetExpr(self)
+
+
+@dataclass(frozen=True)
+class Super(Expr):
+    keyword: Token
+    method: Token
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitSuperExpr(self)
+
+
+@dataclass(frozen=True)
 class Ternary(Expr):
     one: Expr
     op1: Token
@@ -164,6 +209,14 @@ class Ternary(Expr):
 
     def accept(self, visitor: ExprVisitor) -> typing.Any:
         return visitor.visitTernaryExpr(self)
+
+
+@dataclass(frozen=True)
+class This(Expr):
+    keyword: Token
+
+    def accept(self, visitor: ExprVisitor) -> typing.Any:
+        return visitor.visitThisExpr(self)
 
 
 @dataclass(frozen=True)
@@ -189,7 +242,7 @@ class StmtVisitor(typing.Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def visitLoopInteruptStmt(self, stmt: "LoopInterupt") -> typing.Any:
+    def visitClassStmt(self, stmt: "Class") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -202,6 +255,10 @@ class StmtVisitor(typing.Protocol):
 
     @abstractmethod
     def visitIfStmt(self, stmt: "If") -> typing.Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visitLoopInteruptStmt(self, stmt: "LoopInterupt") -> typing.Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -229,19 +286,20 @@ class Stmt(ABC):
 
 @dataclass(frozen=True)
 class Block(Stmt):
-    statements: list[Stmt]
+    statements: typing.Tuple[Stmt, ...]
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitBlockStmt(self)
 
 
 @dataclass(frozen=True)
-class LoopInterupt(Stmt):
-    keyword: Token
-    value: int = 1
+class Class(Stmt):
+    name: Token
+    methods: typing.Tuple["Func", ...]
+    superclass: typing.Optional[Variable]
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
-        return visitor.visitLoopInteruptStmt(self)
+        return visitor.visitClassStmt(self)
 
 
 @dataclass(frozen=True)
@@ -255,8 +313,8 @@ class Expression(Stmt):
 @dataclass(frozen=True)
 class Func(Stmt):
     name: Token
-    params: list[Token]
-    body: list[typing.Optional[Stmt]]
+    params: typing.Tuple[Token, ...]
+    body: typing.Tuple[typing.Optional[Stmt], ...]
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitFuncStmt(self)
@@ -270,6 +328,15 @@ class If(Stmt):
 
     def accept(self, visitor: StmtVisitor) -> typing.Any:
         return visitor.visitIfStmt(self)
+
+
+@dataclass(frozen=True)
+class LoopInterupt(Stmt):
+    keyword: Token
+    value: int = 1
+
+    def accept(self, visitor: StmtVisitor) -> typing.Any:
+        return visitor.visitLoopInteruptStmt(self)
 
 
 @dataclass(frozen=True)

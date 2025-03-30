@@ -1,10 +1,14 @@
-var a = "global";
-{
-    func showA() {
-        print a;
-    }
-    showA();  // prints "global"
-    var a = "block";
-    showA();  // prints "block"
+class Doughnut {
+  func cook() {
+    print "Fry until golden brown.";
+  }
 }
-print a;  // prints "global"
+
+class BostonCream(Doughnut) {
+  func cook() {
+    super.cook();
+    print "Pipe full of custard and coat with chocolate.";
+  }
+}
+
+BostonCream().cook();

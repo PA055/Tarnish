@@ -6,9 +6,11 @@ from .grammar import (
     Binary,
     Block,
     Call,
+    Class,
     Expr,
     Expression,
     Func,
+    Get,
     Grouping,
     If,
     Lambda,
@@ -19,8 +21,11 @@ from .grammar import (
     Prefix,
     Print,
     Return,
+    Set,
     Stmt,
+    Super,
     Ternary,
+    This,
     Unary,
     Var,
     Variable,
@@ -66,6 +71,8 @@ class Parser:
         try:
             if self.match(TokenType.FUNC):
                 return self.funcDeclaration("function")
+            if self.match(TokenType.CLASS):
+                return self.classDeclaration()
             if self.match(TokenType.VAR):
                 return self.varDeclaration()
             return self.statement()
@@ -73,7 +80,26 @@ class Parser:
             self.synchronize()
             return None
 
-    def funcDeclaration(self, type: str) -> Stmt:
+    def classDeclaration(self) -> Stmt:
+        name = self.consume(TokenType.IDENTIFIER, "Expect class name.")
+
+        superclass = None
+        if self.match(TokenType.LEFT_PAREN):
+            if self.match(TokenType.IDENTIFIER):
+                superclass = Variable(self.previous())
+            self.consume(TokenType.RIGHT_PAREN, "Expect ')' after superclass")
+
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+        methods: list[Func] = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.isAtEnd():
+            self.consume(TokenType.FUNC, "Expect only methods in class body.")
+            methods.append(self.funcDeclaration("method"))
+
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+        return Class(name, tuple(methods), superclass)
+
+    def funcDeclaration(self, type: str) -> Func:
         name = self.consume(TokenType.IDENTIFIER, f"Expect {type} name.")
         self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {type} name.")
 
@@ -88,7 +114,7 @@ class Parser:
 
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {type} body.")
         body: list[Optional[Stmt]] = self.block()
-        return Func(name, parameters, body)
+        return Func(name, tuple(parameters), tuple(body))
 
     def varDeclaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, "Expected variable name.")
@@ -125,7 +151,7 @@ class Parser:
             return self.loopInturuptStatement()
 
         if self.match(TokenType.LEFT_BRACE):
-            return Block([i for i in self.block() if i is not None])
+            return Block(tuple(i for i in self.block() if i is not None))
 
         return self.expressionStatement()
 
@@ -152,6 +178,7 @@ class Parser:
     def forStatement(self) -> Stmt:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
 
+        initializer: Optional[Stmt] = None
         if self.match(TokenType.SEMICOLON):
             initializer = None
         elif self.match(TokenType.VAR):
@@ -171,12 +198,12 @@ class Parser:
 
         body = self.statement()
         if increment is not None:
-            body = Block([body, Expression(increment)])
+            body = Block(tuple([body, Expression(increment)]))
         if condition is None:
             condition = Literal(True)
         body = While(condition, body, for_transformed=True)
         if initializer is not None:
-            body = Block([initializer, body])
+            body = Block(tuple([initializer, body]))
 
         return body
 
@@ -238,13 +265,20 @@ class Parser:
     def assignment(self) -> Expr:
         expr = self.ternary()
 
-        if self.match(TokenType.EQUAL):
-            equals = self.previous()
+        if self.match(TokenType.EQUAL, TokenType.CARET_EQUAL,
+                      TokenType.PLUS_EQUAL, TokenType.MINUS_EQUAL,
+                      TokenType.STAR_EQUAL, TokenType.SLASH_EQUAL,
+                      TokenType.AMPERSAND_EQUAL, TokenType.BAR_EQUAL,
+                      TokenType.GREATER_GREATER_EQUAL, TokenType.LESS_LESS_EQUAL,
+                      TokenType.PERCENT_EQUAL):
+            operator = self.previous()
             value = self.assignment()
 
             if isinstance(expr, Variable):
-                return Assign(expr.name, value)
-            self.error(equals, "Invalid assignment target.")
+                return Assign(expr.name, operator, value)
+            elif isinstance(expr, Get):
+                return Set(expr.object, expr.name, value)
+            self.error(operator, "Invalid assignment target.")
 
         return expr
 
@@ -350,7 +384,7 @@ class Parser:
         return self.prefix()
 
     def prefix(self) -> Expr:
-        if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+        if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS, TokenType.TILDE_TILDE):
             operator = self.previous()
             right = self.prefix()
             if isinstance(right, Variable):
@@ -368,7 +402,7 @@ class Parser:
 
     def postfix(self) -> Expr:
         expr: Expr = self.call()
-        if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+        if self.match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS, TokenType.TILDE_TILDE):
             operator: Token = self.previous()
             if isinstance(expr, Variable):
                 return Postfix(operator, expr.name)
@@ -387,7 +421,10 @@ class Parser:
                             self.error(self.peek(), "Can't have more than 255 arguments.")
                         arguments.append(self.expression())
                 paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
-                expr = Call(expr, paren, arguments)
+                expr = Call(expr, paren, tuple(arguments))
+            elif self.match(TokenType.DOT):
+                name = self.consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+                expr = Get(expr, name)
             else:
                 break
         return expr
@@ -405,7 +442,7 @@ class Parser:
                 params.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
         body = self.statement()
-        return Lambda(params, body)
+        return Lambda(tuple(params), body)
 
     def primary(self) -> Expr:
         if self.match(TokenType.FALSE):
@@ -417,6 +454,15 @@ class Parser:
 
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+
+        if self.match(TokenType.SUPER):
+            keyword = self.previous()
+            self.consume(TokenType.DOT, "Except '.' after 'super'.")
+            method = self.consume(TokenType.IDENTIFIER, "Expect superclass method.")
+            return Super(keyword, method)
+
+        if self.match(TokenType.THIS):
+            return This(self.previous())
 
         if self.match(TokenType.IDENTIFIER):
             return Variable(self.previous())

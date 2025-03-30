@@ -1,10 +1,11 @@
-from typing import Dict, Tuple, Any
+from typing import Dict, Iterable, Tuple, Any
 
 from .token import TokenType, Token
 from .error import TarnishRuntimeError, runtimeError
 from .environment import Environment
 from .callable import TarnishCallable
 from .function import TarnishFunction
+from .classes import TarnishClass, TarnishInstance
 from .interupts import BreakInterupt, ContinueInterupt, ReturnInterupt
 from .builtins.time import Time
 from .builtins.string import String
@@ -13,10 +14,12 @@ from .grammar import (
     Binary,
     Block,
     Call,
+    Class,
     Expr,
     Expression,
     ExprVisitor,
     Func,
+    Get,
     Grouping,
     If,
     Lambda,
@@ -28,9 +31,12 @@ from .grammar import (
     Prefix,
     Print,
     Return,
+    Set,
     Stmt,
     StmtVisitor,
+    Super,
     Ternary,
+    This,
     Unary,
     Var,
     Variable,
@@ -63,7 +69,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
             runtimeError(e)
 
     def lookUpVariable(self, name: Token, expr: Expr) -> Any:
-        distance = self.locals.get(expr, None)
+        distance = self.locals.get(expr)
         if distance is not None:
             return self.environment.getAt(distance, name)
         else:
@@ -78,7 +84,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def resolve(self, expr: Expr, depth: int):
         self.locals[expr] = depth
 
-    def executeBlock(self, statements: list[Stmt], environment: Environment):
+    def executeBlock(self, statements: Iterable[Stmt], environment: Environment):
         previous: Environment = self.environment
         try:
             self.environment = environment
@@ -94,15 +100,46 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return self.lookUpVariable(expr.name, expr)
 
     def visitAssignExpr(self, expr: Assign) -> Any:
+        newValue = self.lookUpVariable(expr.name, expr)
         value = self.evaluate(expr.value)
+        token = expr.operator.tokenType
+
+        if token == TokenType.EQUAL:
+            newValue = value
+        elif token == TokenType.PLUS_EQUAL:
+            newValue += value
+        elif token == TokenType.MINUS_EQUAL:
+            newValue -= value
+        elif token == TokenType.STAR_EQUAL:
+            newValue *= value
+        elif token == TokenType.SLASH_EQUAL:
+            newValue /= value
+        elif token == TokenType.PERCENT_EQUAL:
+            newValue %= value
+        elif token == TokenType.CARET_EQUAL:
+            newValue ^= value
+        elif token == TokenType.AMPERSAND_EQUAL:
+            newValue &= value
+        elif token == TokenType.BAR_EQUAL:
+            newValue |= value
+        elif token == TokenType.GREATER_GREATER_EQUAL:
+            newValue >>= value
+        elif token == TokenType.LESS_LESS_EQUAL:
+            newValue <<= value
 
         distance = self.locals.get(expr, None)
         if distance is not None:
-            self.environment.assignAt(distance, expr.name, value)
+            self.environment.assignAt(distance, expr.name, newValue)
         else:
-            self.environment.assign(expr.name, value)
+            self.environment.assign(expr.name, newValue)
 
-        return value
+        return newValue
+
+    def visitGetExpr(self, expr: Get) -> Any:
+        obj = self.evaluate(expr.object)
+        if isinstance(obj, TarnishInstance):
+            return obj.get(expr.name)
+        raise TarnishRuntimeError(expr.name, "Only instances have properties.")
 
     def visitGroupingExpr(self, expr: Grouping) -> Any:
         return self.evaluate(expr.expression)
@@ -139,36 +176,41 @@ class Interpreter(ExprVisitor, StmtVisitor):
         elif expr.operator.tokenType == TokenType.BANG:
             return not bool(right)
 
-        # TODO: seperate this, and add += and -=
-        elif expr.operator.tokenType == TokenType.PLUS_PLUS:
-            return int(right)
-        elif expr.operator.tokenType == TokenType.MINUS_MINUS:
-            return int(right)
-
         return None
 
     def visitPrefixExpr(self, expr: Prefix) -> Any:
-        value = self.lookUpVariable(expr.name, expr) + (1 if expr.operator.tokenType == TokenType.PLUS_PLUS else -1)
+        value = self.lookUpVariable(expr.name, expr)
+        if expr.operator.tokenType == TokenType.PLUS_PLUS:
+            newValue = value + 1
+        elif expr.operator.tokenType == TokenType.MINUS_MINUS:
+            newValue = value - 1
+        else:
+            newValue = ~value
 
         distance = self.locals.get(expr, None)
         if distance is not None:
-            self.environment.assignAt(distance, expr.name, value)
+            self.environment.assignAt(distance, expr.name, newValue)
         else:
-            self.environment.assign(expr.name, value)
+            self.environment.assign(expr.name, newValue)
 
-        return value
+        return newValue
 
     def visitPostfixExpr(self, expr: Postfix) -> Any:
-        mod = 1 if expr.operator.tokenType == TokenType.PLUS_PLUS else -1
-        value = self.lookUpVariable(expr.name, expr) + mod
+        value = self.lookUpVariable(expr.name, expr)
+        if expr.operator.tokenType == TokenType.PLUS_PLUS:
+            newValue = value + 1
+        elif expr.operator.tokenType == TokenType.MINUS_MINUS:
+            newValue = value - 1
+        else:
+            newValue = ~value
 
         distance = self.locals.get(expr, None)
         if distance is not None:
-            self.environment.assignAt(distance, expr.name, value)
+            self.environment.assignAt(distance, expr.name, newValue)
         else:
-            self.environment.assign(expr.name, value)
+            self.environment.assign(expr.name, newValue)
 
-        return value - mod
+        return value
 
     def visitLogicalExpr(self, expr: Logical) -> Any:
         left = self.evaluate(expr.left)
@@ -179,6 +221,27 @@ class Interpreter(ExprVisitor, StmtVisitor):
             if not left:
                 return left
         return self.evaluate(expr.right)
+
+    def visitSetExpr(self, expr: Set):
+        obj = self.evaluate(expr.object)
+        if not isinstance(obj, TarnishInstance):
+            raise TarnishRuntimeError(expr.name, "Only instances have fields.")
+
+        value = self.evaluate(expr.value)
+        obj.set(expr.name, value)
+        return value
+
+    def visitThisExpr(self, expr: This):
+        return self.lookUpVariable(expr.keyword, expr)
+
+    def visitSuperExpr(self, expr: Super):
+        distance = self.locals[expr]
+        superclass = self.environment.getAt(distance, "super")
+        obj = self.environment.getAt(distance - 1, 'this')
+        method = superclass.findMethod(expr.method.lexme)
+        if method is None:
+            raise TarnishRuntimeError(expr.method, f"Undefined property '{expr.method.lexme}'.")
+        return method.bind(obj)
 
     def visitBinaryExpr(self, expr: Binary) -> Any:
         left = self.evaluate(expr.left)
@@ -290,6 +353,29 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if stmt.value is not None:
             value = self.evaluate(stmt.value)
         self.environment.define(stmt.name, value)
+
+    def visitClassStmt(self, stmt: Class):
+        superclass = None
+        if stmt.superclass is not None:
+            superclass = self.evaluate(stmt.superclass)
+            if not isinstance(superclass, TarnishClass):
+                raise TarnishRuntimeError(stmt.superclass.name, "Superclass must be a class.")
+
+        self.environment.define(stmt.name, None)
+
+        if stmt.superclass is not None:
+            self.environment = Environment(self.environment)
+            self.environment.define('super', superclass)
+
+        methods: Dict[str, TarnishFunction] = {}
+        for method in stmt.methods:
+            function = TarnishFunction(method, self.environment, method.name.lexme == '__init__')
+            methods[method.name.lexme] = function
+
+        classObj = TarnishClass(stmt.name.lexme, methods, superclass)
+        if superclass is not None:
+            self.environment = self.environment.enclosing
+        self.environment.assign(stmt.name, classObj)
 
     def visitExpressionStmt(self, stmt: Expression):
         self.evaluate(stmt.value)
