@@ -1,11 +1,14 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "common.h"
+#include "memory.h"
 #include "scanner.h"
 
 typedef struct {
+    const char* source;
     const char* start;
     const char* current;
     int line;
@@ -14,6 +17,7 @@ typedef struct {
 Scanner scanner;
 
 void initScanner(const char* source) {
+    scanner.source = source;
     scanner.start = source;
     scanner.current = source;
     scanner.line = 1;

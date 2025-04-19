@@ -1,0 +1,19 @@
+{
+    var a = 1;
+    {
+        var b = a + a;
+        {
+            var c = b + a;
+            {
+                var d = 6 - b;
+                a = a + 1;
+            }
+            var e = c + (c + a) - a;
+        }
+    }
+    a = a / 2;
+    var f = (a + a + a) * (a + a);
+    {
+        var g = f + a;
+    }
+}
