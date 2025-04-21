@@ -1,7 +1,6 @@
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "common.h"
@@ -126,5 +125,22 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
         }
 
         index = (index + 1) % table->capacity;
+    }
+}
+
+void tableRemoveWhite(Table *table) {
+    for (int i = 0; i < table->capacity; i++) {
+        Entry* entry = &table->entries[i];
+        if (entry->key != NULL && !entry->key->obj.isMarked) {
+            tableDelete(table, entry->key);
+        }
+    }
+}
+
+void markTable(Table *table) {
+    for (int i = 0; i < table->capacity; i++) {
+        Entry* entry = &table->entries[i];
+        markObject((Obj*)entry->key);
+        markValue(entry->value);
     }
 }

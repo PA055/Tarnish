@@ -1,0 +1,16 @@
+var globalSet;
+var globalGet;
+
+func main() {
+  var a = "initial";
+
+  func set() { a = "updated"; }
+  func get() { print a; }
+
+  globalSet = set;
+  globalGet = get;
+}
+
+main();
+globalSet();
+globalGet();
