@@ -1,0 +1,31 @@
+class Zoo {
+  func __init__() {
+    this.aardvark = 1;
+    this.baboon   = 1;
+    this.cat      = 1;
+    this.donkey   = 1;
+    this.elephant = 1;
+    this.fox      = 1;
+  }
+  func ant()    { return this.aardvark; }
+  func banana() { return this.baboon; }
+  func tuna()   { return this.cat; }
+  func hay()    { return this.donkey; }
+  func grass()  { return this.elephant; }
+  func mouse()  { return this.fox; }
+}
+
+var zoo = Zoo();
+var sum = 0;
+var start = time();
+while (sum < 100000000) {
+  sum = sum + zoo.ant()
+            + zoo.banana()
+            + zoo.tuna()
+            + zoo.hay()
+            + zoo.grass()
+            + zoo.mouse();
+}
+
+print time() - start;
+print sum;
