@@ -67,6 +67,12 @@ int disassembleInstruction(Chunk* chunk, int offset) {
 
     uint8_t instruction = chunk->code[offset];
     switch (instruction) {
+        case OP_LIST_BUILD:
+            return byteInstruction("OP_LIST_BUILD", chunk, offset);
+        case OP_LIST_INDEX:
+            return simpleInstruction("OP_LIST_INDEX", offset);
+        case OP_LIST_STORE:
+            return simpleInstruction("OP_LIST_STORE", offset);
         case OP_CALL:
             return byteInstruction("OP_CALL", chunk, offset);
         case OP_CLASS:
@@ -137,16 +143,34 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             return simpleInstruction("OP_ADD", offset);
         case OP_SUBTRACT:
             return simpleInstruction("OP_SUBTRACT", offset);
+        case OP_OR:
+            return simpleInstruction("OP_OR", offset);
+        case OP_XOR:
+            return simpleInstruction("OP_XOR", offset);
+        case OP_AND:
+            return simpleInstruction("OP_AND", offset);
+        case OP_LSHIFT:
+            return simpleInstruction("OP_LSHIFT", offset);
+        case OP_RSHIFT:
+            return simpleInstruction("OP_RSHIFT", offset);
+        case OP_MODULUS:
+            return simpleInstruction("OP_MODULUS", offset);
+        case OP_FLOOR_DIVIDE:
+            return simpleInstruction("OP_FLOOR_DIVIDE", offset);
         case OP_METHOD:
             return constantInstruction("OP_METHOD", chunk, offset);
         case OP_MULTIPLY:
             return simpleInstruction("OP_MULTIPLY", offset);
         case OP_DIVIDE:
             return simpleInstruction("OP_DIVIDE", offset);
+        case OP_EXPONENT:
+            return simpleInstruction("OP_EXPONENT", offset);
         case OP_NOT:
             return simpleInstruction("OP_NOT", offset);
         case OP_NEGATE:
             return simpleInstruction("OP_NEGATE", offset);
+        case OP_INVERT:
+            return simpleInstruction("OP_INVERT", offset);
         case OP_POP:
             return simpleInstruction("OP_POP", offset);
         case OP_PRINT:

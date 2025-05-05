@@ -1,0 +1,127 @@
+class Foo() {}
+class Bar() {}
+
+var a = "hello";
+var b = "hi";
+var c = "hello";
+var d = Foo();
+var e = Foo();
+var f = Bar();
+var g = Bar();
+var h = e;
+var i = f;
+var k = b;
+
+var start = time();
+for (var count = 0; count < 10000000; count = count + 1) {
+    var eq = a == a;
+    eq = a == b;
+    eq = a == c;
+    eq = a == d;
+    eq = a == e;
+    eq = a == f;
+    eq = a == g;
+    eq = a == h;
+    eq = a == i;
+    eq = a == k;
+
+    eq = b == a;
+    eq = b == b;
+    eq = b == c;
+    eq = b == d;
+    eq = b == e;
+    eq = b == f;
+    eq = b == g;
+    eq = b == h;
+    eq = b == i;
+    eq = b == k;
+
+    eq = c == a;
+    eq = c == b;
+    eq = c == c;
+    eq = c == d;
+    eq = c == e;
+    eq = c == f;
+    eq = c == g;
+    eq = c == h;
+    eq = c == i;
+    eq = c == k;
+
+    eq = d == a;
+    eq = d == b;
+    eq = d == c;
+    eq = d == d;
+    eq = d == e;
+    eq = d == f;
+    eq = d == g;
+    eq = d == h;
+    eq = d == i;
+    eq = d == k;
+
+    eq = e == a;
+    eq = e == b;
+    eq = e == c;
+    eq = e == d;
+    eq = e == e;
+    eq = e == f;
+    eq = e == g;
+    eq = e == h;
+    eq = e == i;
+    eq = e == k;
+
+    eq = f == a;
+    eq = f == b;
+    eq = f == c;
+    eq = f == d;
+    eq = f == e;
+    eq = f == f;
+    eq = f == g;
+    eq = f == h;
+    eq = f == i;
+    eq = f == k;
+
+    eq = g == a;
+    eq = g == b;
+    eq = g == c;
+    eq = g == d;
+    eq = g == e;
+    eq = g == f;
+    eq = g == g;
+    eq = g == h;
+    eq = g == i;
+    eq = g == k;
+
+    eq = h == a;
+    eq = h == b;
+    eq = h == c;
+    eq = h == d;
+    eq = h == e;
+    eq = h == f;
+    eq = h == g;
+    eq = h == h;
+    eq = h == i;
+    eq = h == k;
+
+    eq = i == a;
+    eq = i == b;
+    eq = i == c;
+    eq = i == d;
+    eq = i == e;
+    eq = i == f;
+    eq = i == g;
+    eq = i == h;
+    eq = i == i;
+    eq = i == k;
+
+    eq = k == a;
+    eq = k == b;
+    eq = k == c;
+    eq = k == d;
+    eq = k == e;
+    eq = k == f;
+    eq = k == g;
+    eq = k == h;
+    eq = k == i;
+    eq = k == k;
+}
+print time() - start;

@@ -1,7 +1,6 @@
 #ifndef tarnish_vm_h
 #define tarnish_vm_h
 
-#include "chunk.h"
 #include "object.h"
 #include "table.h"
 #include "value.h"
