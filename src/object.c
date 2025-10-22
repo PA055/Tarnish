@@ -180,7 +180,7 @@ void printObject(Value value) {
     printFunction(AS_BOUND_METHOD(value)->method->function);
     break;
   case OBJ_STRING:
-    printf("\"%s\"", AS_CSTRING(value));
+    printf("%s", AS_CSTRING(value));
     break;
   case OBJ_FUNCTION:
     printFunction(AS_FUNCTION(value));

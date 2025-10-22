@@ -1,0 +1,137 @@
+print "Hello, World!";
+print "=" * 50;
+print "";
+
+print "Operations";
+print "=" * 50;
+print "5 * (3 + 2 * 2) - 20 / -2 = " + str(5 * (3 + 2 * 2) - 20 / -2);
+print "(12 & 1 >> 3) | (35 << 1) ^ 12 = " + str((12 & 1 >> 3) | (35 << 1) ^ 12);
+// %% is floor division, ** is power
+print "(12 % 5 + 3 ** 3) %% 3 = " + str((12 % 5 + 18) %% 3);
+print "true || (5 - 4 >= 0) && false = " + str(true || (5 - 4 >= 0) && false);
+print "";
+
+/*
+multi line comments exist
+/*
+and you can nest them inside each other
+*/
+and you can also put normal comments in them
+// like this
+// this is a single line comment
+*/
+
+
+// which works on its own line
+var a = 0; // and after a line of code
+var b = /* this works too */ 1;
+
+print "Loops and Conditionals";
+print "=" * 50;
+
+print "for loop to 10";
+for (var i = 0; i < 10; i = i + 1) {
+    if (i < 5) {
+        print "i (" + str(i) + ") < 5";
+    } else if (i >= 8) // supports single statements without brackets
+        print "i (" + str(i) + ") >= 8";
+    else {
+        print "i (" + str(i) + ")";
+    }
+}
+print "";
+
+print "while loop to 32";
+var i = 1;
+while (i % 32 != 0) {
+    print i;
+    i = i * 2;
+}
+print i;
+print "";
+
+print "Functions";
+print "=" * 50;
+
+func greet(name) {
+    print "Hello, " + name + "!";
+}
+
+greet("World");
+greet("Me");
+print "";
+
+func fibonacci(n) {
+    if (n < 2) return n;
+    return fibonacci(n - 2) + fibonacci(n - 1); // recursion works
+}
+
+for (var i = 0; i < 10; i = i + 1)
+    print "fibonacci(" + str(i + 1) + ") = " + str(fibonacci(i + 1));
+
+func closures(value) {
+    func inner() {
+        return value + " from inner";
+    }
+    return inner;
+}
+print "";
+
+var a = closures("bye");
+var b = closures("hi");
+
+print b();
+print a();
+print "";
+
+print "Classes";
+print "=" * 50;
+
+class Food {
+    func __init__(calories) {
+        this.calories = calories;
+    }
+
+    func eat() {
+        print "You ate food with " + str(this.calories) + " calories";
+    }
+}
+
+class Sandwitch(Food) {
+    // inherits from Food
+}
+
+class Pizza(Food) {
+    // overload methods
+    func eat() {
+        print "You ate pizza with " + str(this.calories) + " calories";
+    }
+}
+
+class BLT(Sandwitch) {
+    func __init__(calories, tomatoes) {
+        print "__init__ gets called when you create the class, BLT in this case";
+        super.__init__(calories); // call the parent's init function
+        this.tomatoes = tomatoes;
+    }
+
+    func eat() {
+        super.eat(); // call the parent's eat function, no recursion here
+        print "its a blt";
+        if (!this.tomatoes) {
+            print "a blt without tomatoes </3";
+        }
+    }
+}
+
+var a = Food(100);
+var b = Sandwitch(40);
+var c = Pizza(450);
+var d = BLT(50, true);
+var e = BLT(40, false);
+
+a.eat();
+b.eat();
+c.eat();
+d.eat();
+e.eat();

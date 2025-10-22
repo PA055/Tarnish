@@ -75,6 +75,23 @@ void initScanner(const char *source) {
   }
 }
 
+static void blockComment() {
+  int depth = 0;
+  do {
+    if (peek() == '/' && peekNext() == '*')
+      depth++;
+
+    if (peek() == '*' && peekNext() == '/')
+      depth--;
+
+    if (peek() == '\n')
+      scanner.line++;
+
+    advance();
+  } while (depth > 0);
+  advance(); // the last /
+}
+
 static void skipWhitespace() {
   for (;;) {
     char c = peek();
@@ -92,7 +109,9 @@ static void skipWhitespace() {
       if (peekNext() == '/') {
         while (peek() != '\n' && !isAtEnd())
           advance();
-      } else {
+        } else if (peekNext() == '*') {
+          blockComment();
+        } else {
         return;
       }
       break;

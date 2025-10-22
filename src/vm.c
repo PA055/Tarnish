@@ -80,6 +80,8 @@ void initVM() {
   vm.initString = copyString("__init__", 8);
 
   defineNative("time", timeNative, 0);
+  defineNative("str", strNative, 1);
+  defineNative("int", intNative, 1);
 }
 
 void freeVM() {

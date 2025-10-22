@@ -1,7 +1,6 @@
 #ifndef tarnish_chunk_h
 #define tarnish_chunk_h
 
-#include "common.h"
 #include "value.h"
 
 typedef enum {
