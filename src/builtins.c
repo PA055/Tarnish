@@ -30,3 +30,12 @@ NativeResult intNative(int argCount, Value* args) {
     if (IS_NUMBER(args[0])) { return (NativeResult) {false, INT_VAL((int)AS_NUMBER(args[0]))}; }
     return (NativeResult) {true, INT_VAL(0)};
 }
+
+NativeResult lenNative(int argCount, Value* args) {
+    if (IS_LIST(args[0])) {
+        return (NativeResult) { false, INT_VAL(AS_LIST(args[0])->count) };
+    } else if (IS_STRING(args[0])) {
+        return (NativeResult) { false, INT_VAL(AS_STRING(args[0])->length) };
+    }
+    return (NativeResult) {true, INT_VAL(0)};
+}

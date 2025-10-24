@@ -79,9 +79,10 @@ void initVM() {
   vm.initString = NULL;
   vm.initString = copyString("__init__", 8);
 
-  defineNative("time", timeNative, 0);
-  defineNative("str", strNative, 1);
   defineNative("int", intNative, 1);
+  defineNative("len", lenNative, 1);
+  defineNative("str", strNative, 1);
+  defineNative("time", timeNative, 0);
 }
 
 void freeVM() {

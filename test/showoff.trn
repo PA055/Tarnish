@@ -135,3 +135,34 @@ b.eat();
 c.eat();
 d.eat();
 e.eat();
+print "";
+
+print "Lists and Indexing";
+print "=" * 50;
+
+var l = [1, 2.5, "hi", false];
+print l;
+print len(l);
+print "l[1] = " + str(l[1]);
+l[2] = "bye";
+l[0] = "magic";
+print l;
+
+func find(element, list) {
+    for (var i = 0; i < len(list); i = i + 1) {
+        if (list[i] == element) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+print "2.5 at index " + str(find(2.5, l));
+print "'bye' at index " + str(find("bye", l));
+print "'hi' at index " + str(find("hi", l)) + " (not in array)";
+
+var s = "testing";
+print s;
+print "0th element: " + s[0];
+print "5th element: " + s[5];
+print "'s' at index " + str(find("s", s));
